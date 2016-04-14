@@ -85,6 +85,20 @@ int main()
 	}
 
 	close(sock);
+
+	 res = close(shmem_fd);
+    if (res) 
+    {
+        perror("close");
+        exit(1);
+    }
+    
+    res = shm_unlink(SHMEM_PATH);
+    if (res) 
+    {
+        perror("shm_unlink");
+        exit(1);
+    }
 	
  
 	return 0;
