@@ -1,10 +1,9 @@
 CC = gcc
 CFLAGS = -O3 -Wall -Wextra -pedantic
 
-all: client.o fork_server.o #server.o
+all: client.o fork.o #thread.o pull_thread.o server.o
 
-#server.o:
-#	$(CC) socket_server.c $(CFLAGS) -o server
+fork.o: fork_server.o client.o
 
 client.o:
 	$(CC) socket_client.c $(CFLAGS) -o client
@@ -14,3 +13,7 @@ fork_server.o:
 
 clean:
 	rm -rf server client fork_server log *.o* || 1
+
+
+#server.o:
+#	$(CC) socket_server.c $(CFLAGS) -o server

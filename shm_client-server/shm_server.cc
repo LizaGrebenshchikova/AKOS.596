@@ -8,10 +8,13 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/un.h>
 
 #define SHMEM_PATH "/my_shmem"
 // 64 KiB
 #define SHMEM_SIZE (1 << 16)
+
+#define S_PATH "Ficus"
 
 
 int main()
@@ -48,19 +51,20 @@ int main()
 
 
 	int sock, listener;
-	struct sockaddr_in addr;
+	struct sockaddr_un addr;
     int bytes_read;
 
-	listener = socket(AF_INET, SOCK_STREAM, 0);
+	listener = socket(AF_UNIX, SOCK_STREAM, 0);
 	if(listener < 0)
 	{
 		fprintf(stderr,"SocketError\n");
 		return 1;
 	}
 
-	addr.sin_family = AF_INET;
-    addr.sin_port = htons(3000);
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	addr.sun_family = AF_UNIX;
+    //addr.sin_port = htons(3000);
+    //addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    strcpy(addr.sun_path, S_PATH);
 
     if (bind(listener, (struct sockaddr *)&addr, sizeof(addr)) < 0)
     {
@@ -94,25 +98,34 @@ int main()
             fprintf(file,"%s", buf); 
             printf("%s", buf);
             value = *((int *)ptr);
+            
+            char answer[4];
+            sscanf(buf,"%s",answer);
+            if (strcmp(answer,"Exit") == 0)
+            {
+                fclose(file);
+                close(sock);
+                if (res) 
+                {
+                    perror("close");
+                    exit(1);
+                }
+    
+                unlink(S_PATH);
+                return 0;
+            }
         }
            
     	fclose(file);
-    	close(sock);
+    	close(sock); 
     }
     
-    res = close(shmem_fd);
     if (res) 
     {
         perror("close");
         exit(1);
     }
     
-    res = shm_unlink(SHMEM_PATH);
-    if (res) 
-    {
-        perror("shm_unlink");
-        exit(1);
-    }
-    
+    unlink(S_PATH);
   return 0;
  }

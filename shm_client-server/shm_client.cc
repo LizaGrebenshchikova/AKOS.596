@@ -8,10 +8,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <sys/un.h>
 
 #define SHMEM_PATH "/my_shmem"
 // 64 KiB
 #define SHMEM_SIZE (1 << 16)
+
+#define S_PATH "Ficus"
 
 int main()
 {
@@ -45,15 +48,15 @@ int main()
     int val = *(int *) ptr;
     printf("Current value in the memory: %d\n", val);
 
-    int new_val; 
-    printf("Enter the value to put in the memory\n");
-    scanf("%d", &new_val);
-	*(int *) ptr = new_val;
-    printf("New Value in the memory!\n");
+    //int new_val; 
+    //printf("Enter the value to put in the memory\n");
+    //scanf("%d", &new_val);
+	//*(int *) ptr = new_val;
+    //printf("New Value in the memory!\n");
 
 	int sock;
 	//char c;
-	sock = socket(AF_INET, SOCK_STREAM, 0);
+	sock = socket(AF_UNIX, SOCK_STREAM, 0);
 
 	if (sock < 0)
 	{
@@ -61,10 +64,12 @@ int main()
 		return 1;
 	}
 	
-	struct sockaddr_in addr;
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(3000);
-	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	struct sockaddr_un addr;
+	addr.sun_family = AF_UNIX;
+	//addr.sin_port = htons(3000);
+	//addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    strcpy(addr.sun_path, S_PATH);
+
 
 	if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
 	{
@@ -72,14 +77,36 @@ int main()
 		return 1;
 	}
 
+    int flag = 1;
 
-	while (1)
-	{
+	while (flag)
+	{  
+        int new_val; 
+        printf("Enter the value to put in the memory and enter the message(If you want to close server enter 'Exit' and enter 'Ficus' to close client).\n");
+        scanf("%d\n", &new_val);
+        *(int *) ptr = new_val;
+        printf("New Value in the memory!\n");
 		//char c = fgetc(stdin);
 		char buf[256];
 		if (fgets(buf, sizeof(buf)/sizeof(char) ,stdin) == NULL)
 			break;
 		send(sock, buf, sizeof(buf), 0);
+        char answer[4];
+        sscanf(buf, "%s", answer);
+        if(strcmp(answer,"Ficus") == 0)
+        {
+            flag = 0;
+            close(sock);
+
+            res = close(shmem_fd);
+            if (res) 
+            {
+                perror("close");
+                exit(1);
+            }
+        return 0;
+        }
+
 		
  	
 	}
