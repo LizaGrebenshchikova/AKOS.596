@@ -1,0 +1,3 @@
+[submodule "Text/snowball"]
+	path = Text/snowball
+	url = https://github.com/vmarkovtsev/snowball.git
