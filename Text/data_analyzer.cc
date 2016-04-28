@@ -19,9 +19,10 @@
 
 #define NUM_THREADS 4
 long int* start_positions;
-long int* end_positions;
-//<std::multimap<std::string, int> > ourmaps* (NUM_THREADS); 
+long int* end_positions; 
 pthread_t* ourthreads;
+pthread_t* ourthreads1;
+std::vector<std::multimap<std::string, int>>OurTrees;
 
 
 std::vector<std::string> tokenize(const char *input) {
@@ -73,16 +74,95 @@ void threadwork (int * i) {
     free(filename);
     free(cur_line);
     fclose(ourfile);
+
+    char* filename1 = (char*) malloc (260*sizeof(char) );
+    sprintf (filename1, "%s%d%s", "curout", *i, ".txt");
+
+    char* filename2 = (char*) malloc (260*sizeof(char) );
+    sprintf (filename2, "%s%d%s", "output", *i, ".txt");
+
+    char* filename3 = (char*) malloc (260*sizeof(char) );
+    sprintf (filename3, "%s%d", "./stemwords", *i);
+    
+    char** execargs = (char**)malloc(6*sizeof(char*) );
+    execargs[0] = (char*)malloc (200*sizeof(char) );
+    strcpy(execargs[0], filename3 );
+    execargs[1] = (char*)malloc (200*sizeof(char) );
+    strcpy(execargs[1], "-i" );
+    execargs[2] = (char*)malloc (200*sizeof(char) );
+    strcpy(execargs[2], filename1 );
+    execargs[3] = (char*)malloc (200*sizeof(char) );
+    strcpy(execargs[3], "-o" );
+    execargs[4] = (char*)malloc (200*sizeof(char) );
+    strcpy(execargs[4], filename2);
+    execargs[5]=NULL;
+    //execvp(execargs[0],execargs);
+    pid_t child_pid;
+    int child_status;
+    child_pid = fork ();
+    if (child_pid == 0) {
+            execvp (execargs[0], execargs);
+            printf("cucu\n");
+    } else {
+            if( (child_pid = wait(&child_status)) < 0){
+            std::cout<<"wait";
+            _exit(1);
+          }
+    }
+ 
+        
+    
+   
+    free(execargs[0]);
+    free(execargs[1]);
+    free(execargs[2]);
+    free(execargs[3]);
+    free(execargs[4]);
+    free(execargs[5]);
+    free(execargs);
+    free(filename1);
+    free(filename2);
+    free(filename3);
 }
 
+void threadwork2 (int * i) {
+  std::ifstream in;
+  char* filename4 = (char*) malloc (260*sizeof(char) );
+  sprintf (filename4, "%s%d%s", "output", *i,".txt");
+  in.open(filename4);
+  free(filename4);
+  std::string tmp;
+  while(!in.eof()){
+    in>>tmp;
+    if (OurTrees[*i].find(tmp) == OurTrees[*i].end()) {
+     OurTrees[*i].insert(std::make_pair(tmp,1));
+   } else {
+     OurTrees[*i].find(tmp)->second++;
 
+   }
+ }
+}
 
+void threadwork3(int*u){
+  int thread_number = *u;
+  int*nums=(int*)malloc(thread_number*sizeof(int));
+  for(int j = 0; j < thread_number; j++){
+  nums[j] = j;
+  }
+  for (int j = 0; j < thread_number; j++) {
+    pthread_create(ourthreads1 + j, NULL, (void * (*)(void *)) threadwork2, nums+j);
+  }
+  for (int j = 0; j < thread_number; j++) {
+    pthread_join(ourthreads1[j], NULL);
+  }
+}
 int main() {
 
-std::cout<<"dlsj";
 start_positions = (long int*)malloc (sizeof(long int)*NUM_THREADS );
 end_positions = (long int*)malloc (sizeof(long int)*NUM_THREADS );
-ourthreads = (pthread_t*)malloc (sizeof(pthread_t)*NUM_THREADS );
+ourthreads = (pthread_t*)malloc (sizeof(pthread_t)*(NUM_THREADS + 1));
+ourthreads1 = (pthread_t*)malloc (sizeof(pthread_t)*NUM_THREADS );
+OurTrees.resize(NUM_THREADS);
 
 FILE * file_;
 file_ = fopen ("input.txt","rw");
@@ -113,6 +193,7 @@ for (i = 0; i < NUM_THREADS; ++i) {
 }
 
 int threadnumber = (int)i;
+int thread_number = threadnumber;
 std::cout<<threadnumber<<"\n";
 //char* text = (char*)malloc(filelength + 10*sizeof(char)); //с запасом просто
 //fgets (text, filelength, file_);
@@ -124,53 +205,75 @@ for(int j = 0; j < threadnumber; j++){
 }
 //std::vector<std::string> words = tokenize(text);
 for (int j = 0; j < threadnumber; j++) {
-    
     pthread_create(ourthreads + j, NULL, (void * (*)(void *)) threadwork, nums+j);
 }
-for (int j = 0; j < threadnumber; j++) {
+pthread_create(ourthreads + threadnumber, NULL, (void * (*)(void *)) threadwork3, &thread_number);
+for (int j = 0; j <= threadnumber; j++) {
     pthread_join(ourthreads[j], NULL);
 }
-/*std::ofstream out;
-out.open("curout.txt");
-for(size_t i=0; i<words.size();  ++i) {
-  out<<words[i]; out<<std::endl;
-}
-out.close();*/
+std::cout<<"cucu";
 
-/*char** execargs = (char**)malloc(6*sizeof(char*) );
-execargs[0] = (char*)malloc (200*sizeof(char) );
-strcpy(execargs[0], "./stemwords" );
-execargs[1] = (char*)malloc (200*sizeof(char) );
-strcpy(execargs[1], "-i" );
-execargs[2] = (char*)malloc (200*sizeof(char) );
-strcpy(execargs[2], "curout.txt" );
-execargs[3] = (char*)malloc (200*sizeof(char) );
-strcpy(execargs[3], "-o" );
-execargs[4] = (char*)malloc (200*sizeof(char) );
-strcpy(execargs[4], "output.txt" );
-execargs[5]=NULL;
-execvp(execargs[0],execargs);
 
-pid_t child_pid;
-int child_status;
-child_pid = fork ();
-if (child_pid == 0) {
-        execvp (execargs[0], execargs);
-        printf("cucu\n");
-} else {
-      pid_t tpid = child_pid + 1; 
-      do {
-          tpid = wait(&child_status);
-         } while (tpid != child_pid);
+
+std::multimap< std::string, int> Result_Tree;
+for (int i = 1; i < threadnumber  ; i++){
+  if (OurTrees[0].size()==0){
+    OurTrees[0].swap(OurTrees[i]);
+  }
+  if (OurTrees[i].size() == 0){
+    continue;
+  }
+  auto it3 = OurTrees[0].begin();
+  auto it4 = OurTrees[i].begin();
+  if (it3->first < 
+  it4->first){
+        Result_Tree.insert(*it3);
+        ++it3;
+    } else {
+        Result_Tree.insert(*it4);
+        ++it4;
+    }
+  auto it5 = Result_Tree.begin();
+  while ((it3!=OurTrees[0].end()) && (it4!=OurTrees[i].end())){
+    if (it3->first < it4->first){
+        it5 = Result_Tree.insert(it5,*it3);
+        ++it3;
+    } else {
+        it5 = Result_Tree.insert(it5,*it4);
+        ++it4;
+    }
+  }
+  while (it3!=OurTrees[0].end()){
+     it5 = Result_Tree.insert(it5,*it3);
+        ++it3;
+  }
+  while (it4!=OurTrees[i].end()){
+     it5 =  Result_Tree.insert(it5,*it4);
+        ++it4;
+  }
+  Result_Tree.swap(OurTrees[0]);
+  Result_Tree.clear();
 }
-remove("curout.txt");
-free(execargs[0]);
-free(execargs[1]);
-free(execargs[2]);
-free(execargs[3]);
-free(execargs[4]);
-free(execargs[5]);
-free(execargs);*/
+
+Result_Tree.swap(OurTrees[0]);
+auto it1 = Result_Tree.begin();
+auto it2 = it1;
+++it2;
+std::ofstream out;
+out.open("result.txt");
+while(it2!=Result_Tree.end()){
+  if (it2->first == it1->first){
+    it2->second += it1->second;
+  } else {
+    out<< it1->first<<" "<<it1->second<<"\n";
+  }
+  ++it1;
+  ++it2;
+}
+out<< it1->first<<" "<<it1->second<<"\n";
+
+out.close();
+
   
   return 0;
 }
